@@ -2,7 +2,7 @@
 
 1. Confirm the README candidate endpoints, public proxy port, Headscale 0.23.0/client
    compatibility and Teleport cluster/client version. Check existing VPN membership.
-2. Use the README authenticated private-repo one-liner. Preview with `--dry-run` (Bash)
+2. Use the README public raw-URL one-liner. Preview with `--dry-run` (Bash)
    or `-DryRun` (PowerShell) if needed. No clone, config file or installer folder required.
 3. Run the same command without dry-run. Allow sudo/UAC and OS VPN prompts locally.
    The script installs missing clients, verifies downloads and prints versions. Installed

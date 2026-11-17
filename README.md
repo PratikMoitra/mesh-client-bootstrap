@@ -7,14 +7,14 @@ no silent upgrades. No sibling files or config.env are read.
 
 ## macOS / Linux
 
-For a publicly readable raw URL, the interface is:
+Run this one-line command:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/PratikMoitra/mesh-client-bootstrap/main/bootstrap.sh | bash
 ```
 
-**This repository is private. That anonymous command currently returns 404.** With GitHub
-CLI installed and authenticated to this repo, the working private-repo one-liner is:
+The repository is public. No GitHub login or clone is required. GitHub CLI is an
+alternative (also useful if a future fork is private):
 
 ```sh
 gh api 'repos/PratikMoitra/mesh-client-bootstrap/contents/bootstrap.sh?ref=main' -H 'Accept: application/vnd.github.raw+json' | bash
@@ -26,13 +26,7 @@ extension prompts; open Tailscale if its daemon is unavailable and rerun.
 
 ## Windows (PowerShell 5.1+)
 
-Private repository, GitHub CLI authenticated:
-
-```powershell
-& ([scriptblock]::Create((gh api 'repos/PratikMoitra/mesh-client-bootstrap/contents/bootstrap.ps1?ref=main' -H 'Accept: application/vnd.github.raw+json' | Out-String)))
-```
-
-If the raw file becomes publicly readable, the equivalent interface is:
+Run this one-line command:
 
 ```powershell
 & ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/PratikMoitra/mesh-client-bootstrap/main/bootstrap.ps1').Content))

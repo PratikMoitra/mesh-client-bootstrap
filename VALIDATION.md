@@ -16,5 +16,6 @@
 
 Outstanding: endpoint/TLS/proxy port verification, Headscale 0.23.0 and Teleport
 cluster/client compatibility, signed installer runtime behavior, MacBook pilot,
-Windows/ARM64 pilot. Private repo needs authenticated GitHub download; anonymous raw
-one-liners cannot work unless the file becomes publicly readable. Visibility unchanged.
+Windows/ARM64 pilot. Publication approved directly by Pratik. Both anonymous raw URLs returned HTTP 200
+and matched the local scripts byte-for-byte. GitHub reports visibility public; remote
+main verified. History secret-pattern scan passed across 18 blobs before publication.
