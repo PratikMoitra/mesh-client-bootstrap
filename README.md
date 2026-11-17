@@ -1,127 +1,109 @@
-# Mesh client bootstrap (17 November 2026)
+# One-line mesh client bootstrap
 
-Installs the Tailscale client for a Headscale mesh and Teleport's `tsh` access client.
-Review these files and run locally. Never pipe this bootstrap straight into a shell.
+One self-contained script per shell. Defaults install missing Tailscale and Teleport
+`tsh`, verify downloads, then request Headscale login and print the authentication URL.
+You complete authentication yourself. Existing clients are retained and versions printed;
+no silent upgrades. No sibling files or config.env are read.
 
-**To actually enroll a device, follow [SOP.md](SOP.md)** — a step-by-step runbook covering
-preflight verification, per-OS dry-run → apply → connect, verification and rollback.
-This README is the reference; the SOP is the procedure.
+## macOS / Linux
 
-## Verify these values before use
-
-Copy `config.example.env` to `config.env` and fill in the six settings. Config is plain
-KEY=value data, with no quotes or expansion; never put credentials or invite links in it.
-
-- `HEADSCALE_LOGIN_SERVER`: verified HTTPS control-server URL and trusted TLS certificate.
-  Reported candidate: `https://mesh.psmhome.no`; not tested by this package.
-- `TELEPORT_PROXY`: externally reachable, certificate-valid hostname:port, without a scheme.
-  Reported candidates `teleport.psmhome.no` and LAN `192.168.192.14:3080` do not establish
-  the correct public client port. Confirm TLS routing and proxy reachability first.
-- `TAILSCALE_URL` and `TAILSCALE_SHA256`: exact official artifact URL and independently
-  verified SHA256 for this OS/architecture. macOS standalone PKG; Windows MSI;
-  Linux `https://tailscale.com/install.sh` (review and hash the downloaded script first).
-- `TELEPORT_URL` and `TELEPORT_SHA256`: exact official signed macOS client PKG,
-  Linux tar.gz or Windows bin.zip and independently verified SHA256. Select the cluster's
-  supported client version and edition; do not guess a version or download 'latest'.
-
-One config describes ONE OS/CPU; use separate private config files for different machines.
-Official download origins are allowlisted; redirects are refused. Check architecture
-(`uname -m` or Windows system settings) before choosing packages. Confirm supported OS,
-admin rights, existing VPN/mesh membership, Headscale user/device approval procedure,
-and Tailscale compatibility with the reported Headscale 0.23.0 before enrollment.
-The old control-plane version may require an upgrade plan; this package cannot establish compatibility.
-The admin UI's final mesh-only hostname/access state, DNS, subnet routes and ACLs are
-not prerequisites to encode here and are not changed. No LAN routes are advertised.
-
-## Quickstart: macOS and Linux
-
-Requires Bash, curl, tar (Linux), a SHA256 tool, sudo and internet access.
-On macOS use the standalone Tailscale package; mixing App Store and standalone variants
-is unsupported by this bootstrap. Approve OS VPN/system-extension prompts yourself.
+For a publicly readable raw URL, the interface is:
 
 ```sh
-cp config.example.env config.env
-# Edit config.env with verified values first.
-bash bootstrap.sh                         # dry run, OS/CPU detection only
-bash bootstrap.sh --apply                 # install missing clients; no login
-bash bootstrap.sh --apply --connect       # request Headscale login; prints auth URL
+curl -fsSL https://raw.githubusercontent.com/PratikMoitra/mesh-client-bootstrap/main/bootstrap.sh | bash
 ```
 
-Linux runs the reviewed, digest-checked official Tailscale installer (which manages
-its package repository and daemon). macOS uses system PKG installers. For Teleport on
-Linux only `teleport/tsh` is extracted to `/usr/local/bin/tsh`; no service is started.
-Existing clients are retained and their versions printed; their compatibility must
-still be checked by the operator. Repeated runs skip existing executables, not upgrade them.
-On macOS open Tailscale once if its extension/daemon is not ready, then rerun.
+**This repository is private. That anonymous command currently returns 404.** With GitHub
+CLI installed and authenticated to this repo, the working private-repo one-liner is:
 
-## Quickstart: Windows
+```sh
+gh api 'repos/PratikMoitra/mesh-client-bootstrap/contents/bootstrap.sh?ref=main' -H 'Accept: application/vnd.github.raw+json' | bash
+```
 
-Use Windows PowerShell 5.1+ on Windows 10+ with administrator permission available for
-MSI elevation. Do not weaken an organization execution policy; have these scripts approved.
+To preview, change `| bash` to `| bash -s -- --dry-run`. Requires Bash, curl, tar,
+SHA256 tools and administrator/sudo access. macOS requires approval of VPN/system
+extension prompts; open Tailscale if its daemon is unavailable and rerun.
+
+## Windows (PowerShell 5.1+)
+
+Private repository, GitHub CLI authenticated:
 
 ```powershell
-Copy-Item config.example.env config.env
-# Edit config.env with verified values first.
-.\bootstrap.ps1
-.\bootstrap.ps1 -Apply
-.\bootstrap.ps1 -Apply -Connect
+& ([scriptblock]::Create((gh api 'repos/PratikMoitra/mesh-client-bootstrap/contents/bootstrap.ps1?ref=main' -H 'Accept: application/vnd.github.raw+json' | Out-String)))
 ```
 
-The selector calls `installers/windows.ps1`. It verifies the Tailscale MSI digest and
-Authenticode validity and runs the installer with UAC elevation; restart is never forced.
-`tsh.exe` is installed under `%LOCALAPPDATA%\MeshBootstrap\bin`, without changing PATH.
-The printed Teleport command uses its full path. An existing PATH `tsh.exe` is retained.
-Windows does not run the Teleport server/node agent.
+If the raw file becomes publicly readable, the equivalent interface is:
 
-## Enrollment is a separate user step
+```powershell
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/PratikMoitra/mesh-client-bootstrap/main/bootstrap.ps1').Content))
+```
 
-`--connect` / `-Connect` runs `tailscale up --login-server=... --timeout=5s` without
-auth keys, browser automation or `--reset`. It may print an authentication URL.
-Open that URL yourself and follow the Headscale enrollment/administrator approval flow.
-A timeout/nonzero exit is pending or failed enrollment, NOT success. An already enrolled
-client may show no URL. Existing preferences can cause refusal: inspect the error and
-resolve manually; do not blindly reset. Repointing an existing client can disconnect its
-current mesh; review membership before choosing Connect. The client/OS may display prompts.
+Append `-DryRun` after the final `)` to preview. No execution-policy bypass is used.
+UAC elevation may be required for Tailscale. Restart requests are reported, never forced.
+`tsh.exe` goes to `%LOCALAPPDATA%\MeshBootstrap\bin`; the script prints its exact login
+command. Windows ARM64 uses native Tailscale plus the Windows amd64 Teleport binary
+under OS x64 emulation; this requires a pilot on a supporting Windows release.
 
-Finish your Teleport invite and MFA enrollment personally. Then use the printed
-`tsh login --proxy=...` command; the bootstrap never executes it. Check `tailscale status`
-and `tsh status` after user enrollment. Reachability and access depend on server ACLs,
-DNS and certificates, none of which this package modifies.
+## Verify these values
 
-This is a workstation client bootstrap, not automated resource enrollment. A Linux/macOS
-Teleport node agent needs a separately approved join method, role, configuration and
-service lifecycle. Installing `tsh` does not make this machine an SSH resource.
+Top-of-script variables have **UNVERIFIED candidate defaults**, printed on every run:
 
-## Phones (manual)
+| Variable | Default | Still needs verification |
+| --- | --- | --- |
+| HEADSCALE_LOGIN_SERVER | https://mesh.psmhome.no | Control URL, trusted TLS, reachability |
+| TELEPORT_PROXY | teleport.psmhome.no | Public client port/routing/TLS |
+| TAILSCALE_VERSION | 1.104.7 | Compatibility with reported Headscale 0.23.0 |
+| TELEPORT_VERSION | 18.11.10 | Compatibility with actual cluster version/edition |
 
-Install the official Tailscale app from Apple's App Store or Google Play, choose a custom
-coordination/login server using the platform's documented procedure, enter the verified
-Headscale HTTPS URL, approve VPN permission and finish enrollment yourself. Menu locations
-vary by app version; follow the official guide linked below rather than an old screenshot.
-A general SSH/agent or Ansible-style host script does not apply to iOS/Android.
-Teleport mobile is for supported MFA/access-request workflows, not a full node agent or
-replacement for desktop `tsh`. Confirm available mobile features with your cluster edition
-and current app documentation; an authenticator can satisfy MFA without providing SSH access.
+The release defaults were observed at official vendor sources during authoring; they
+are not evidence of deployment compatibility. Linux Tailscale's official installer
+selects its stable package release; TAILSCALE_VERSION applies to macOS/Windows packages.
+Override variables without editing. For example, put assignments on the receiving Bash:
 
-## Reversal and limitations
+```sh
+curl -fsSL '<readable-raw-url>/bootstrap.sh' | HEADSCALE_LOGIN_SERVER=https://verified.example TELEPORT_PROXY=verified.example:443 bash
+```
 
-No unattended uninstall is included. `tailscale down` disconnects; `tailscale logout`
-removes the local login (server device cleanup is a separate administrator action).
-Use official OS/package uninstall instructions for Tailscale and macOS Teleport packages.
-Linux: remove `/usr/local/bin/tsh` only if this bootstrap installed it. Windows: remove
-`%LOCALAPPDATA%\MeshBootstrap\bin\tsh.exe` only if installed here; uninstall Tailscale in
-Settings. `tsh logout` removes the active client login. No automatic rollback of an already
-successful first installation if the second installation fails; fix config and rerun.
-Linux repository installer changes are subject to that official installer's behavior.
+PowerShell: set `$env:HEADSCALE_LOGIN_SERVER` / `$env:TELEPORT_PROXY` before the one-liner.
+Never put credentials, tokens or invite URLs in these variables or files.
 
-## Sources and validation boundary
+Default apply can repoint an existing client to the candidate mesh. Confirm values and
+existing VPN membership before running; use dry-run for inspection. No `--reset` or
+auth key is used. `tailscale up --login-server=... --timeout=10s` may return pending
+login/nonzero while displaying the URL. Already enrolled clients may show no URL.
+This is never reported as successful enrollment. Teleport login is printed, not run.
 
-- [Tailscale custom coordination server (all OS tabs)](https://tailscale.com/docs/how-to/set-up-custom-coordination-server)
-- [Tailscale packages](https://pkgs.tailscale.com/stable/)
-- [Teleport macOS installation](https://goteleport.com/docs/installation/macos/)
-- [Teleport Windows installation](https://goteleport.com/docs/installation/windows/)
-- [Teleport Linux installation](https://goteleport.com/docs/installation/linux/)
-- [Teleport official packages](https://goteleport.com/download/packages/)
+## Official downloads and verification
 
-Authoring checks are recorded in VALIDATION.md. No real installation, authentication,
-endpoint probe, GitHub publication or live infrastructure change was performed.
+- macOS: official Tailscale universal PKG and Teleport universal client PKG; vendor
+  `.sha256` required and package signature checked before system installer invocation.
+- Linux: [official Tailscale HTTPS installer](https://tailscale.com/install.sh). No
+  independent vendor script digest is used; the installer manages signed OS packages.
+  Teleport archive uses vendor `.sha256`; only `teleport/tsh` is installed.
+- Windows: official Tailscale MSI with vendor SHA256 and valid Authenticode;
+  Teleport ZIP with vendor SHA256. A missing/mismatched digest fails closed.
+
+Digests delivered from the same vendor over HTTPS provide integrity, not an independent
+trust channel. Script execution trusts this repository and vendor delivery endpoints.
+Installation may partially complete; rerun skips installed clients rather than rolling
+back. No mesh server, DNS, ACL, node-agent or Teleport resource enrollment is performed.
+
+## Phones
+
+Install the official Tailscale app from App Store/Play Store, select a custom coordination
+server using the current platform guide, and finish VPN/enrollment prompts yourself.
+A shell/Ansible-style host installer does not apply to iOS/Android. Teleport mobile
+supports MFA/access-request workflows where available, not a full node agent or desktop
+`tsh` replacement. Confirm features for the actual cluster.
+
+## Documentation and validation
+
+[SOP.md](SOP.md) covers the one-line flow, verification and reversal.
+[VALIDATION.md](VALIDATION.md) records authoring checks and remaining pilot work.
+`installers/` and `config.example.env` are legacy stubs and unused.
+
+Sources: [Tailscale packages and checksum convention](https://pkgs.tailscale.com/stable/),
+[custom coordination server](https://tailscale.com/docs/how-to/set-up-custom-coordination-server),
+[Teleport macOS](https://goteleport.com/docs/installation/macos/),
+[Teleport Windows](https://goteleport.com/docs/installation/windows/),
+[Teleport Linux](https://goteleport.com/docs/installation/linux/).
