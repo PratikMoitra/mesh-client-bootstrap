@@ -63,9 +63,23 @@ main() {
  [[ -n "$ts" ]] || { echo 'Open Tailscale and approve macOS VPN/extension prompts, then rerun.' >&2; return 1; }
  "$ts" version; /usr/bin/env PATH="/usr/local/bin:$PATH" tsh version
  printf 'Complete Teleport invite/MFA yourself, then: tsh login --proxy=%s\n' "$TELEPORT_PROXY"
+ if [[ "$os" == Darwin ]]; then
+  defaults write io.tailscale.ipn.macsys LoginURL -string "$HEADSCALE_LOGIN_SERVER" 2>/dev/null || true
+  defaults write io.tailscale.ipn.macsys ControlURL -string "$HEADSCALE_LOGIN_SERVER" 2>/dev/null || true
+  defaults write io.tailscale.ipn.macos LoginURL -string "$HEADSCALE_LOGIN_SERVER" 2>/dev/null || true
+  defaults write io.tailscale.ipn.macos ControlURL -string "$HEADSCALE_LOGIN_SERVER" 2>/dev/null || true
+  if ! pgrep -q Tailscale; then
+   open -a Tailscale 2>/dev/null || true
+   sleep 2
+  fi
+ fi
  echo 'Requesting Headscale login; open the printed URL yourself. Already enrolled clients may show no URL. Existing preferences are never reset.'
  rc=0
- if [[ "$os" == Linux ]]; then rootrun "$ts" up --login-server="$HEADSCALE_LOGIN_SERVER" --timeout=10s || rc=$?; else "$ts" up --login-server="$HEADSCALE_LOGIN_SERVER" --timeout=10s || rc=$?; fi
+ if [[ "$os" == Linux ]]; then
+  rootrun "$ts" login --login-server="$HEADSCALE_LOGIN_SERVER" || rootrun "$ts" up --login-server="$HEADSCALE_LOGIN_SERVER" --timeout=10s || rc=$?
+ else
+  "$ts" login --login-server="$HEADSCALE_LOGIN_SERVER" || "$ts" up --login-server="$HEADSCALE_LOGIN_SERVER" --timeout=10s || rc=$?
+ fi
  if ((rc)); then echo "Login pending or failed (exit $rc). Read URL/error above; installation is not enrollment." >&2; return "$rc"; fi
 }
 # Parse the whole script before running commands that may consume stdin.

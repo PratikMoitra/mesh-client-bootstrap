@@ -54,7 +54,12 @@ try {
  if ($LASTEXITCODE -ne 0) { throw 'tsh version check failed' }
  Write-Output "Complete invite and MFA yourself; then run: & '$tsh' login --proxy=$($c.TELEPORT_PROXY)"
  & {
-  & $ts up "--login-server=$($c.HEADSCALE_LOGIN_SERVER)" '--timeout=10s'
+  New-Item -Path "HKLM:\SOFTWARE\Policies\Tailscale" -Force -ErrorAction SilentlyContinue | Out-Null
+  Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Tailscale" -Name "LoginURL" -Value $c.HEADSCALE_LOGIN_SERVER -ErrorAction SilentlyContinue
+  & $ts login "--login-server=$($c.HEADSCALE_LOGIN_SERVER)"
+  if ($LASTEXITCODE -ne 0) {
+   & $ts up "--login-server=$($c.HEADSCALE_LOGIN_SERVER)" '--timeout=10s'
+  }
   if ($LASTEXITCODE -ne 0) { throw 'Headscale login pending or failed; read displayed URL/error and rerun after enrollment.' }
  }
 } finally { Remove-Item -LiteralPath $temp -Recurse -Force }
